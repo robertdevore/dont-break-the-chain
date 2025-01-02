@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Don't Break the Chain</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Don't Break the Chain</h1>
+
+    <!-- Calendar Navigation -->
+    <div class="flex items-center justify-between w-full max-w-xl mb-4">
+        <button id="prev-month" class="text-gray-700 hover:text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+            </svg>
+        </button>
+        <div id="month-name" class="text-xl font-semibold text-gray-700"></div>
+        <button id="next-month" class="text-gray-700 hover:text-gray-900">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7" />
+            </svg>
+        </button>
+    </div>
+
+    <!-- Calendar -->
+    <div id="calendar" class="grid grid-cols-7 gap-2 bg-white p-4 rounded shadow-lg max-w-xl">
+        <!-- Days will be populated dynamically -->
+    </div>
+
+    <!-- Chain Selector -->
+    <div class="flex items-center gap-4 mt-6">
+        <select id="chain-selector" class="border border-gray-300 rounded px-4 py-2">
+            <!-- Chains will be populated dynamically -->
+        </select>
+    </div>
+
+    <script>
+        const calendar = document.getElementById("calendar");
+        const chainSelector = document.getElementById("chain-selector");
+        let currentYear, currentMonth, selectedChain;
+
+        document.getElementById("prev-month").addEventListener("click", () => changeMonth(-1));
+        document.getElementById("next-month").addEventListener("click", () => changeMonth(1));
+
+        // Render the calendar for a given month and year
+        async function renderCalendar(year, month) {
+        try {
+            const response = await axios.get(`/get_calendar?year=${year}&month=${month}`);
+            const { days } = response.data;
+
+            // Set current month and year
+            currentYear = year;
+            currentMonth = month;
+
+            // Update month display
+            const monthName = new Date(year, month - 1, 1).toLocaleString("default", { month: "long" });
+            document.getElementById("month-name").textContent = `${monthName} ${year}`;
+
+            // Clear and populate calendar grid
+            calendar.innerHTML = "";
+
+            // Add day headers (Sun, Mon, etc.)
+            ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].forEach((day) => {
+            const header = document.createElement("div");
+            header.className = "font-bold text-center";
+            header.textContent = day;
+            calendar.appendChild(header);
+            });
+
+            // Add days to calendar grid
+            days.forEach(({ day }) => {
+            const dayBox = document.createElement("div");
+            dayBox.className = "day-box rounded text-center p-4 transition duration-200";
+
+            if (day === null) {
+                // Empty box for padding
+                dayBox.classList.add("bg-gray-100");
+            } else {
+                // Valid day
+                dayBox.classList.add("bg-gray-200", "cursor-pointer", "hover:bg-gray-300");
+                dayBox.dataset.date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+                dayBox.textContent = day;
+
+                // Add click event for marking/unmarking dates
+                dayBox.addEventListener("click", () => toggleDate(dayBox.dataset.date, dayBox));
+            }
+
+            calendar.appendChild(dayBox);
+            });
+
+            // Fetch marked dates for the current chain
+            await fetchMarkedDates();
+        } catch (error) {
+            console.error("Error rendering calendar:", error);
+        }
+        }
+
+        // Change the displayed month
+        function changeMonth(delta) {
+        let newMonth = currentMonth + delta;
+        let newYear = currentYear;
+
+        if (newMonth === 0) {
+            newMonth = 12;
+            newYear -= 1;
+        } else if (newMonth === 13) {
+            newMonth = 1;
+            newYear += 1;
+        }
+
+        renderCalendar(newYear, newMonth);
+        }
+
+        // Fetch marked dates for the selected chain
+        async function fetchMarkedDates() {
+        if (!selectedChain) return;
+
+        try {
+            const response = await axios.get(`/get_dates?chain_name=${selectedChain}`);
+            const markedDates = response.data;
+
+            document.querySelectorAll(".day-box").forEach((box) => {
+            if (markedDates.includes(box.dataset.date)) {
+                box.classList.add("bg-green-500", "text-white");
+                box.classList.remove("bg-gray-200");
+            } else {
+                box.classList.add("bg-gray-200");
+                box.classList.remove("bg-green-500", "text-white");
+            }
+            });
+        } catch (error) {
+            console.error("Error fetching marked dates:", error);
+        }
+        }
+
+        // Toggle marking/unmarking a date
+        async function toggleDate(date, element) {
+        try {
+            const response = await axios.post("/mark_date", { date, chain_name: selectedChain });
+
+            if (response.data.message === "marked") {
+            element.classList.add("bg-green-500", "text-white");
+            element.classList.remove("bg-gray-200");
+            } else if (response.data.message === "unmarked") {
+            element.classList.add("bg-gray-200");
+            element.classList.remove("bg-green-500", "text-white");
+            }
+        } catch (error) {
+            console.error("Error toggling the date:", error);
+            alert("There was an error toggling the date. Please try again.");
+        }
+        }
+
+        // Fetch and populate chain dropdown
+        async function fetchChains() {
+        try {
+            const response = await axios.get("/get_chains");
+            const chains = response.data;
+
+            chainSelector.innerHTML = ""; // Clear existing options
+
+            if (chains.length === 0) {
+            selectedChain = null;
+            chainSelector.innerHTML = '<option value="">No chains available</option>';
+            calendar.innerHTML = '<p class="text-center text-gray-500">No chains to display. Add chains to get started.</p>';
+            return;
+            }
+
+            // Populate dropdown and select the first chain by default
+            chains.forEach((chain) => {
+            const option = document.createElement("option");
+            option.value = chain;
+            option.textContent = chain;
+            chainSelector.appendChild(option);
+            });
+
+            selectedChain = chains[0];
+            renderCalendar(currentYear, currentMonth);
+        } catch (error) {
+            console.error("Error fetching chains:", error);
+        }
+        }
+
+        // Handle chain selection change
+        chainSelector.addEventListener("change", (event) => {
+        selectedChain = event.target.value;
+        renderCalendar(currentYear, currentMonth);
+        });
+
+        // Initialize the app
+        document.addEventListener("DOMContentLoaded", () => {
+        const today = new Date();
+        currentYear = today.getFullYear();
+        currentMonth = today.getMonth() + 1;
+
+        // Fetch and populate chains on page load
+        fetchChains();
+        });
+
+    </script>
+</body>
+</html>

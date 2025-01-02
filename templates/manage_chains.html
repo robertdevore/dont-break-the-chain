@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Chains</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Manage Chains</h1>
+
+    <div class="w-full max-w-md">
+        <input id="chain-name-input" type="text" placeholder="New Chain Name"
+               class="border border-gray-300 rounded px-4 py-2 w-full mb-4" />
+        <button id="add-chain-btn" class="bg-green-500 text-white px-4 py-2 rounded w-full mb-4">Add Chain</button>
+    </div>
+
+    <div id="chain-list" class="w-full max-w-md">
+        <!-- Chains will be listed here -->
+    </div>
+
+    <script>
+        const chainList = document.getElementById('chain-list');
+
+        async function fetchChains() {
+            const response = await axios.get('/get_chains');
+            chainList.innerHTML = '';
+            response.data.forEach(chain => {
+                const chainItem = document.createElement('div');
+                chainItem.className = 'flex justify-between items-center border border-gray-300 rounded p-4 mb-2';
+                chainItem.innerHTML = `
+                    <span>${chain}</span>
+                    <button class="delete-btn bg-red-500 text-white px-2 py-1 rounded" data-chain="${chain}">Delete</button>
+                `;
+                chainList.appendChild(chainItem);
+            });
+
+            document.querySelectorAll('.delete-btn').forEach(btn => {
+                btn.addEventListener('click', async () => {
+                    const chainName = btn.getAttribute('data-chain');
+                    await axios.post('/delete_chain', { chain_name: chainName });
+                    fetchChains();
+                });
+            });
+        }
+
+        document.getElementById('add-chain-btn').addEventListener('click', async () => {
+            const chainName = document.getElementById('chain-name-input').value.trim();
+            if (!chainName) return;
+
+            await axios.post('/add_chain', { chain_name: chainName });
+            document.getElementById('chain-name-input').value = '';
+            fetchChains();
+        });
+
+        document.addEventListener('DOMContentLoaded', fetchChains);
+    </script>
+</body>
+</html>

@@ -1,0 +1,68 @@
+body {
+    font-family: Helvetica, Arial, sans-serif;
+    text-align: center;
+    margin: 0;
+    padding: 0;
+}
+
+h1 {
+    margin: 20px 0;
+}
+
+#calendar {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 5px;
+    padding: 10px;
+}
+
+.day-box {
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #ccc;
+    cursor: pointer;
+}
+
+.day-box.marked {
+    background-color: #4caf50;
+    color: white;
+}
+
+.bg-gray-100 {
+    background-color: #f7fafc;
+}
+
+.bg-gray-200 {
+    background-color: #edf2f7;
+}
+
+body.light {
+    background-color: #ffffff;
+    color: #000000;
+}
+
+body.dark {
+    background-color: #1a202c;
+    color: #ffffff;
+}
+
+#theme-toggle {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#theme-toggle-icon {
+    width: 24px;
+    height: 24px;
+    transition: transform 0.3s;
+}

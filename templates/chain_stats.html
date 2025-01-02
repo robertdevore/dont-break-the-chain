@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chain Statistics</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+</head>
+<body class="bg-gray-100 min-h-screen flex flex-col items-center p-6">
+    <h1 class="text-3xl font-bold text-gray-800 mb-8">Chain Statistics</h1>
+
+    <!-- Chain Selector -->
+    <div class="flex items-center gap-4 mb-6">
+        <select id="chain-selector" class="border border-gray-300 rounded px-4 py-2">
+            <!-- Chains will be populated dynamically -->
+        </select>
+        <button id="view-stats" class="bg-blue-500 text-white px-4 py-2 rounded">View Stats</button>
+    </div>
+
+    <!-- Stats Display -->
+    <div id="stats" class="text-center bg-white shadow-lg rounded p-6 w-full max-w-md hidden">
+        <h2 class="text-xl font-semibold mb-4">Statistics for <span id="chain-name"></span></h2>
+        <p><strong>Current Streak:</strong> <span id="current-streak"></span> days</p>
+        <p><strong>Longest Streak:</strong> <span id="longest-streak"></span> days</p>
+        <p><strong>Percent Marked:</strong> <span id="percent-marked"></span>%</p>
+    </div>
+
+    <script>
+        const chainSelector = document.getElementById('chain-selector');
+        const statsDiv = document.getElementById('stats');
+        const chainNameElem = document.getElementById('chain-name');
+        const currentStreakElem = document.getElementById('current-streak');
+        const longestStreakElem = document.getElementById('longest-streak');
+        const percentMarkedElem = document.getElementById('percent-marked');
+
+        // Fetch and populate chain dropdown
+        async function fetchChains() {
+            try {
+                const response = await axios.get('/get_chains');
+                const chains = response.data;
+
+                chainSelector.innerHTML = ''; // Clear existing options
+
+                if (chains.length === 0) {
+                    chainSelector.innerHTML = '<option value="">No chains available</option>';
+                    return;
+                }
+
+                // Populate dropdown
+                chains.forEach(chain => {
+                    const option = document.createElement('option');
+                    option.value = chain;
+                    option.textContent = chain;
+                    chainSelector.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error fetching chains:', error);
+            }
+        }
+
+        // Fetch statistics for the selected chain
+        async function fetchStats() {
+            const chainName = chainSelector.value;
+            if (!chainName) {
+                alert('Please select a chain to view its statistics.');
+                return;
+            }
+
+            try {
+                const response = await axios.get(`/chain_stats?chain_name=${chainName}`);
+                const { current_streak, longest_streak, percent_marked } = response.data;
+
+                chainNameElem.textContent = chainName;
+                currentStreakElem.textContent = current_streak;
+                longestStreakElem.textContent = longest_streak;
+                percentMarkedElem.textContent = percent_marked;
+
+                statsDiv.classList.remove('hidden');
+            } catch (error) {
+                console.error('Error fetching stats:', error);
+                alert('Failed to fetch statistics.');
+            }
+        }
+
+        document.getElementById('view-stats').addEventListener('click', fetchStats);
+
+        // Initialize the page
+        document.addEventListener('DOMContentLoaded', fetchChains);
+    </script>
+</body>
+</html>
